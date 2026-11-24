@@ -31,6 +31,7 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 	userRepo := repository.NewUserRepository(db)
 	catRepo := repository.NewCategoryRepository(db)
 	taskRepo := repository.NewTaskRepository(db)
+	adminRepo := repository.NewAdminRepository(db)
 
 	authService := service.NewAuthService(userRepo)
 	taskService := service.NewTaskService(taskRepo, catRepo)
@@ -38,6 +39,7 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 	authHandler := handler.NewAuthHandler(authService)
 	catHandler := handler.NewCategoryHandler(catRepo)
 	taskHandler := handler.NewTaskHandler(taskService)
+	adminHandler := handler.NewAdminHandler(adminRepo)
 
 	api := r.Group("/api/v1")
 
@@ -65,8 +67,17 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 	user.PUT("/tasks/:id", taskHandler.Update)
 	user.DELETE("/tasks/:id", taskHandler.Delete)
 
-	// Group khusus ADMIN (nanti diisi di tahap berikutnya)
-	_ = protected.Group("/admin", middleware.RequireRole("ADMIN"))
+	// Group khusus ADMIN
+	admin := protected.Group("/admin", middleware.RequireRole("ADMIN"))
+	admin.GET("/dashboard", adminHandler.Dashboard)
+
+	admin.GET("/users", adminHandler.GetUsers)
+	admin.GET("/users/:id", adminHandler.GetUserDetail)
+	admin.PATCH("/users/:id/role", adminHandler.UpdateUserRole)
+	admin.PATCH("/users/:id/status", adminHandler.UpdateUserStatus)
+
+	admin.GET("/tasks", adminHandler.GetAllTasks)
+	admin.GET("/tasks/:id", adminHandler.GetTaskByID)
 
 	return r
 }
