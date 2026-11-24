@@ -29,8 +29,15 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 
 	// Dependency Injection
 	userRepo := repository.NewUserRepository(db)
+	catRepo := repository.NewCategoryRepository(db)
+	taskRepo := repository.NewTaskRepository(db)
+
 	authService := service.NewAuthService(userRepo)
+	taskService := service.NewTaskService(taskRepo, catRepo)
+
 	authHandler := handler.NewAuthHandler(authService)
+	catHandler := handler.NewCategoryHandler(catRepo)
+	taskHandler := handler.NewTaskHandler(taskService)
 
 	api := r.Group("/api/v1")
 
@@ -42,8 +49,21 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 	protected := api.Group("", middleware.AuthJWT(userRepo))
 	protected.GET("/auth/me", authHandler.Me)
 
-	// Group khusus USER (nanti diisi di tahap berikutnya)
-	_ = protected.Group("", middleware.RequireRole("USER"))
+	// Group khusus USER
+	user := protected.Group("", middleware.RequireRole("USER"))
+	user.GET("/dashboard", taskHandler.Dashboard)
+
+	user.GET("/categories", catHandler.GetAll)
+	user.GET("/categories/:id", catHandler.GetByID)
+	user.POST("/categories", catHandler.Create)
+	user.PUT("/categories/:id", catHandler.Update)
+	user.DELETE("/categories/:id", catHandler.Delete)
+
+	user.GET("/tasks", taskHandler.GetAll)
+	user.GET("/tasks/:id", taskHandler.GetByID)
+	user.POST("/tasks", taskHandler.Create)
+	user.PUT("/tasks/:id", taskHandler.Update)
+	user.DELETE("/tasks/:id", taskHandler.Delete)
 
 	// Group khusus ADMIN (nanti diisi di tahap berikutnya)
 	_ = protected.Group("/admin", middleware.RequireRole("ADMIN"))
